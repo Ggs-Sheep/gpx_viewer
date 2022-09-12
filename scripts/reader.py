@@ -1,9 +1,11 @@
 import mailbox
+from pydoc import text
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 import re
+import numpy as np
 
 class Reader:
     def __init__(self, file_path):
@@ -37,7 +39,8 @@ class Reader:
             time[i] = pd.to_datetime(time[i])
         ele = pd.Series(re.findall(r'<ele>([^\<]+)',gpx_data), name='ele', dtype=int)
         hr = pd.Series(re.findall(r'<gpxtpx:hr>([^\<]+)',gpx_data), name='hr', dtype=int)
-        self.data = pd.concat([lat,lon,time,ele,hr],axis=1)
+        cad = pd.Series(re.findall(r'<gpxtpx:cad>([^\<]+)',gpx_data), name='cad', dtype=int)
+        self.data = pd.concat([lat,lon,time,ele,hr,cad],axis=1)
     
     def build_gpx_plot(self):
 
@@ -45,7 +48,7 @@ class Reader:
             rows=1, cols=2,
             column_widths=[0.6, 0.4],
             # row_heights=[0.4, 0.6],
-            specs=[[{"type": "scattermapbox"}, {"type": "surface"}]]
+            specs=[[{"type": "scattermapbox"}, {"type": "scatter"}]]
             )
 
         fig.add_trace(
@@ -53,7 +56,8 @@ class Reader:
                     mode = 'markers+lines',
                     lon=self.data['lon'],
                     lat=self.data['lat'],
-                    marker={'size':10}
+                    marker={'size':10},
+                    marker_color=self.data['hr']
                 )
             ,
             row=1, col=1
@@ -63,19 +67,27 @@ class Reader:
         #     #go.Surface(
         #     go.Mesh3d(
         #         x=self.data['time'],
-        #         z=self.data['hr'],
-        #         y=self.data['ele'],
+        #         y=self.data['cad'],
+        #         z=self.data['ele'],
         #         ),
         #     row=1, col=2,
         # )
 
+        color_scale = self.data['hr'].astype(str)
+
         fig.add_trace(
-            # go.Scatter(
-            #     x=self.data['time'],
-            #     y=self.data['ele']
-            # ),
-            go.Scatter3d(x=self.data['time'], z=self.data['ele'],
-                           y=self.data['hr'], mode="lines"),
+            go.Scatter(
+                x=self.data['time'],
+                y=self.data['ele'],
+                mode='markers+lines',
+                marker = dict(
+                    colorscale='Plasma',
+                    showscale=True,
+                ),
+                marker_color=self.data['hr'],
+                text='Elevation based on Time, color scale from Heart Rate'
+
+            ),
             row = 1,
             col = 2
         )
